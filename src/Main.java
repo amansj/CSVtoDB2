@@ -1,3 +1,5 @@
+package toDatabase;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -6,11 +8,17 @@ import java.time.Instant;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class Main {
-	private static int NO_OF_CORES=2;
+	public static void pageCalculations(MutableInt numOfRecord,MutableInt numPages,MutableInt remainingRecord,int numOfThread,XSSFSheet sheet1) {
+		numOfRecord.setValue(sheet1.getPhysicalNumberOfRows()-1);
+		numPages.setValue((numOfRecord.intValue())/numOfThread);
+		remainingRecord.setValue((numOfRecord.intValue())-numOfThread*(numPages.intValue()));	
+	}
+	private static final int NUMBER_OF_CORES=2; 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		System.out.print("Enter Number of Thread:");
@@ -23,28 +31,32 @@ public class Main {
 			FileInputStream fis=new FileInputStream(src);
 			XSSFWorkbook wb=new XSSFWorkbook(fis);
 			XSSFSheet sheet1=wb.getSheetAt(0);			
-			int numOfRecord=sheet1.getPhysicalNumberOfRows()-1;
-			int numPages=numOfRecord/numOfThread;
-			int remainingRecord=numOfRecord-numOfThread*numPages;
-			ExecutorService execService=Executors.newFixedThreadPool(NO_OF_CORES);
+			MutableInt numRecords = new MutableInt();
+			MutableInt numPages=new MutableInt();
+			MutableInt remRecords=new MutableInt();
+			pageCalculations(numRecords,numPages,remRecords,numOfThread,sheet1);
+			ExecutorService execService=Executors.newFixedThreadPool(NUMBER_OF_CORES);
 			int start,end;
 			int i;
+			int numOfRecords=numRecords.intValue();
+			int numOfPages=numPages.intValue();
+			int remainingRecords=remRecords.intValue();
 			for(i=0;i<numOfThread;i++)
 			{
-				start=i*numPages+1;
-				end=start+numPages-1;
+				start=i*numOfPages+1;
+				end=start+numOfPages-1;
 				TestMultiNaming1 thread=new TestMultiNaming1(sheet1);
-				thread.setIndex(start, end,i);
+				thread.setIndex(start, end);
 				execService.execute(thread);
 			}
-			while(remainingRecord!=0)
+			while(remainingRecords!=0)
 			{
-				start=numOfRecord-remainingRecord+1;
-				end=numOfRecord-remainingRecord+1;
+				start=numOfRecords-remainingRecords+1;
+				end=numOfRecords-remainingRecords+1;
 				TestMultiNaming1 thread=new TestMultiNaming1(sheet1);
-				thread.setIndex(start, end,++i);
+				thread.setIndex(start, end);
 				execService.execute(thread);
-				remainingRecord--;
+				remainingRecords--;
 			}
 			execService.shutdown();  
 		    while (!execService.isTerminated()) {   }  
@@ -56,6 +68,5 @@ public class Main {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
 	}
 }
